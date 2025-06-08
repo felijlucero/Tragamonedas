@@ -7,6 +7,9 @@ function App() {
   const [balance, setBalance] = useState(1000);
   const [activeLines, setActiveLines] = useState(1);
   const [freeSpins, setFreeSpins] = useState(0);
+  const [simulations, setSimulations] = useState([]);
+  const [simulating, setSimulating] = useState(false);
+
   const slotRef = [useRef(null), useRef(null), useRef(null), useRef(null), useRef(null)];
   const fruits = ["🍒", "🍉", "🍊", "🍓", "🍇", "🥝", "✨", "🔮", "🐇"];
   const fruitHeight = 100;
@@ -31,16 +34,18 @@ function App() {
   };
 
   const payouts = {
-    "🍒": { 3: 1, 4: 2, 5: 3 },
-    "🍉": { 3: 1, 4: 2, 5: 3 },
-    "🍊": { 3: 1.5, 4: 2, 5: 3 },
-    "🍓": { 3: 1.5, 4: 2, 5: 3 },
-    "🍇": { 3: 2, 4: 3, 5: 4 },
-    "🥝": { 3: 2, 4: 3, 5: 4 },
+    "🍒": { 3: 3, 4: 4, 5: 5 },
+    "🍉": { 3: 3, 4: 4, 5: 5 },
+    "🍊": { 3: 2.5, 4: 3.5, 5: 4.5 },
+    "🍓": { 3: 2.5, 4: 3, 5: 4 },
+    "🍇": { 3: 3, 4: 4, 5: 5 },
+    "🥝": { 3: 3, 4: 4, 5: 5 },
     "✨": { 3: 0, 4: 0, 5: 0 },
     "🔮": { 3: 0, 4: 0, 5: 0 },
     "🐇": { 3: 0, 4: 0, 5: 0 },
   };
+
+  const payoutMultiplier = { 1: 2, 3: 1.5, 5: 1 };
 
   const roll = () => {
     if (rolling) return;
@@ -70,7 +75,6 @@ function App() {
       const patterns = linesPatterns[activeLines];
       let totalWin = 0;
 
-      // 🐇 Bonificador
       const flatSymbols = visible.flat();
       const bonusCount = flatSymbols.filter((s) => s === "🐇").length;
       if (bonusCount >= 3) {
@@ -78,13 +82,10 @@ function App() {
         alert("¡🐇 Bonificador! Ganaste 1 giro gratis.");
       }
 
-      const payoutMultiplier = { 1: 2, 3: 1.5, 5: 1 };
-
-      // Verificar líneas ganadoras
       patterns.forEach((line) => {
         const symbols = line.map((row, col) => visible[col][row]);
         const first = symbols[0];
-        if (first === "✨") return; // No se puede empezar con comodín
+        if (first === "✨") return;
 
         let count = 1;
         for (let i = 1; i < symbols.length; i++) {
@@ -96,11 +97,10 @@ function App() {
         }
 
         if (count >= 3 && payouts[first]?.[count]) {
-          let lineWin = payouts[first][count] * bet* payoutMultiplier[activeLines];
+          let lineWin = payouts[first][count] * bet * payoutMultiplier[activeLines];
           if (symbols.includes("🔮")) {
             lineWin *= 2;
           }
-
           totalWin += lineWin;
         }
       });
@@ -132,6 +132,60 @@ function App() {
     return visible;
   };
 
+  const generateSimulatedGrid = () => {
+    const visible = [];
+    for (let i = 0; i < 5; i++) {
+      const randomIndex = Math.floor(Math.random() * fruits.length);
+      const columnSymbols = extendedFruits.slice(randomIndex, randomIndex + 3);
+      visible.push(columnSymbols);
+    }
+    return visible;
+  };
+
+  const simulateSpins = async (count) => {
+    setSimulating(true);
+    const results = [];
+
+    for (let i = 0; i < count; i++) {
+      const visible = generateSimulatedGrid();
+      const patterns = linesPatterns[activeLines];
+      let totalWin = 0;
+
+      const flatSymbols = visible.flat();
+      const bonusCount = flatSymbols.filter((s) => s === "🐇").length;
+      const gotFreeSpin = bonusCount >= 3;
+
+      patterns.forEach((line) => {
+        const symbols = line.map((row, col) => visible[col][row]);
+        const first = symbols[0];
+        if (first === "✨") return;
+
+        let count = 1;
+        for (let i = 1; i < symbols.length; i++) {
+          if (symbols[i] === first || symbols[i] === "✨") {
+            count++;
+          } else {
+            break;
+          }
+        }
+
+        if (count >= 3 && payouts[first]?.[count]) {
+          let lineWin = payouts[first][count] * bet * payoutMultiplier[activeLines];
+          if (symbols.includes("🔮")) {
+            lineWin *= 2;
+          }
+          totalWin += lineWin;
+        }
+      });
+
+      results.push({ win: totalWin, freeSpin: gotFreeSpin });
+      await new Promise((r) => setTimeout(r, 1));
+    }
+
+    setSimulations(results);
+    setSimulating(false);
+  };
+
   return (
     <div className="App">
       <h1>🎰Tragamonedas</h1>
@@ -141,7 +195,7 @@ function App() {
           Saldo actual: ${balance}
           {freeSpins > 0 && <div>🎁 Giros gratis: {freeSpins}</div>}
         </div>
-        <button className="reset-button" onClick={() => { setBalance(1000); setFreeSpins(0); }} disabled={rolling}>
+        <button className="reset-button" onClick={() => { setBalance(1000); setFreeSpins(0); setSimulations([]); }} disabled={rolling}>
           Reiniciar saldo
         </button>
       </div>
@@ -189,6 +243,22 @@ function App() {
           <option value={3}>3 líneas</option>
           <option value={5}>5 líneas</option>
         </select>
+      </div>
+
+      <div className="simulation-stats">
+        <button onClick={() => simulateSpins(1000)} disabled={simulating || rolling}>
+          {simulating ? "Simulando..." : "▶ Simular 1000 tiradas"}
+        </button>
+
+        {simulations.length > 0 && (
+          <div className="simulation-result">
+            <p>Total de tiradas: {simulations.length}</p>
+            <p>Ganadoras: {simulations.filter(r => r.win > 0).length}</p>
+            <p>Total ganado: ${simulations.reduce((acc, r) => acc + r.win, 0).toFixed(2)}</p>
+            <p>RTP estimado: {((simulations.reduce((acc, r) => acc + r.win, 0) / (simulations.length * bet)) * 100).toFixed(2)}%</p>
+            <p>Giros gratis obtenidos: {simulations.filter(r => r.freeSpin).length}</p>
+          </div>
+        )}
       </div>
     </div>
   );

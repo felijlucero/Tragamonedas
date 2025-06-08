@@ -215,4 +215,44 @@
     color: black;
   }
   
+  .simulation-stats {
+    margin-top: 30px;
+    background-color: rgba(0, 0, 0, 0.884);
+    padding: 20px;
+    border-radius: 12px;
+    border: 2px solid #000;
+    box-shadow: 0 0 10px #000000;
+    width: fit-content;
+  }
+  
+  .simulation-stats button {
+    padding: 10px 20px;
+    font-size: 1rem;
+    border-radius: 8px;
+    background-color:#ffd700;
+    border: 2px solid black;
+    color: black;
+    cursor: pointer;
+    transition: background 0.3s ease;
+  }
+  
+  .simulation-stats button:hover {
+    background-color: #f7e11b;
+  }
+  
+  .simulation-stats button:disabled {
+    background-color: #aaa;
+    cursor: not-allowed;
+  }
+  
+  .simulation-result {
+    margin-top: 15px;
+    font-size: 1rem;
+    text-align: left;
+    color: white;
+  }
+  
+  .simulation-result p {
+    margin: 5px 0;
+  }
   
